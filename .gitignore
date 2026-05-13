@@ -1,0 +1,35 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Local editor / agent state
+.vscode/
+.idea/
+.omx/
+.cp-images/
+
+# Generated experiment outputs
+tools/artifacts/
+tools/artifacts_*/
+tools/logs/
+*.log
+*.zip
+
+# Large vendor / binary assets kept out of GitHub
+DT06+wifi模块附送资料/
+WHEELTEC+B585+DP2+二阶平衡机器人附送资料/
+平衡车补充资料/
+*.mp4
+*.apk
+*.pdf
+
+# Keep the curated MATLAB reference files in Git.
+!matlab_reference/
+!matlab_reference/**

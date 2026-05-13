@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "balance-rl-sim"
+version = "0.1.0"
+description = "Linear-model reinforcement learning experiments for a WHEELTEC B585 DP2 balance robot."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scipy",
+  "gymnasium",
+  "stable-baselines3",
+  "torch",
+  "pandas",
+  "matplotlib",
+  "seaborn",
+  "tqdm",
+]
+
+[tool.setuptools]
+package-dir = {"" = "tools"}
+py-modules = [
+  "lqr_from_matlab",
+  "train",
+  "train_sac",
+  "train_td3",
+  "train_ppo",
+  "evaluate",
+  "plot_results",
+  "run_full_experiment",
+  "live_control",
+]
+
+[tool.setuptools.packages.find]
+where = ["tools"]

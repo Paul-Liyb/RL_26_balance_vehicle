@@ -1,0 +1,217 @@
+import csv
+import json
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+
+TOOLS_DIR = Path(__file__).resolve().parents[1]
+TRAIN_SCRIPT = TOOLS_DIR / "train.py"
+EVAL_SCRIPT = TOOLS_DIR / "evaluate.py"
+PLOT_SCRIPT = TOOLS_DIR / "plot_results.py"
+
+
+class ExperimentCliTests(unittest.TestCase):
+    def test_train_cli_creates_checkpoint_and_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "sac",
+                "--timesteps",
+                "128",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "64",
+                "--eval-episodes",
+                "2",
+                "--output-dir",
+                str(out_dir),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue((out_dir / "sac" / "seed_0" / "best_model.zip").exists())
+            self.assertTrue((out_dir / "sac" / "seed_0" / "metrics.csv").exists())
+
+    def test_train_cli_accepts_and_records_train_reset_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "sac",
+                "--timesteps",
+                "128",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "64",
+                "--eval-episodes",
+                "2",
+                "--train-reset-profile",
+                "narrow",
+                "--output-dir",
+                str(out_dir),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            metadata_path = out_dir / "sac" / "seed_0" / "run_metadata.json"
+            self.assertTrue(metadata_path.exists())
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(metadata["train_reset_profile"], "narrow")
+
+    def test_train_cli_accepts_and_records_train_reward_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "sac",
+                "--timesteps",
+                "128",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "64",
+                "--eval-episodes",
+                "2",
+                "--train-reward-profile",
+                "posture_focus",
+                "--output-dir",
+                str(out_dir),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            metadata_path = out_dir / "sac" / "seed_0" / "run_metadata.json"
+            self.assertTrue(metadata_path.exists())
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(metadata["train_reward_profile"], "posture_focus")
+
+    def test_train_cli_accepts_and_records_sac_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "sac",
+                "--timesteps",
+                "128",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "64",
+                "--eval-episodes",
+                "2",
+                "--sac-profile",
+                "batch128",
+                "--output-dir",
+                str(out_dir),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            metadata_path = out_dir / "sac" / "seed_0" / "run_metadata.json"
+            self.assertTrue(metadata_path.exists())
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(metadata["sac_profile"], "batch128")
+
+    def test_train_cli_accepts_and_records_residual_action_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "sac",
+                "--timesteps",
+                "128",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "64",
+                "--eval-episodes",
+                "2",
+                "--action-mode",
+                "residual_lqr",
+                "--residual-scale",
+                "0.15",
+                "--output-dir",
+                str(out_dir),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            metadata_path = out_dir / "sac" / "seed_0" / "run_metadata.json"
+            self.assertTrue(metadata_path.exists())
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(metadata["action_mode"], "residual_lqr")
+            self.assertAlmostEqual(float(metadata["residual_scale"]), 0.15)
+
+    def test_evaluate_and_plot_scripts_generate_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            summary_dir = Path(temp_dir) / "summary"
+            plot_dir = Path(temp_dir) / "plots"
+            train_cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "ppo",
+                "--timesteps",
+                "256",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "128",
+                "--eval-episodes",
+                "2",
+                "--output-dir",
+                str(out_dir),
+            ]
+            train_result = subprocess.run(train_cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(train_result.returncode, 0, msg=train_result.stderr)
+
+            eval_cmd = [
+                "python3",
+                str(EVAL_SCRIPT),
+                "--input-dir",
+                str(out_dir),
+                "--output-dir",
+                str(summary_dir),
+                "--episodes",
+                "4",
+            ]
+            eval_result = subprocess.run(eval_cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(eval_result.returncode, 0, msg=eval_result.stderr)
+            summary_csv = summary_dir / "summary.csv"
+            self.assertTrue(summary_csv.exists())
+            with summary_csv.open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertGreaterEqual(len(rows), 2)
+
+            plot_cmd = [
+                "python3",
+                str(PLOT_SCRIPT),
+                "--input-dir",
+                str(summary_dir),
+                "--output-dir",
+                str(plot_dir),
+            ]
+            plot_result = subprocess.run(plot_cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(plot_result.returncode, 0, msg=plot_result.stderr)
+            for file_name in [
+                "training_return_curve.png",
+                "success_rate_bar.png",
+                "control_energy_bar.png",
+                "rollout_timeseries.png",
+            ]:
+                self.assertTrue((plot_dir / file_name).exists(), msg=file_name)
+
+
+if __name__ == "__main__":
+    unittest.main()
