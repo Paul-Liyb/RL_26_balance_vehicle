@@ -11,7 +11,7 @@ from stable_baselines3 import PPO, SAC, TD3
 
 import lqr_from_matlab
 
-from .config import ACTION_SCALE, OBSERVATION_SCALE
+from .config import ACTION_SCALE, DEFAULT_MODEL_PROFILE, OBSERVATION_SCALE
 
 
 class Policy(Protocol):
@@ -24,9 +24,10 @@ class LqrPolicy:
     """LQR baseline expressed in the normalized action interface."""
 
     action_scale: float = ACTION_SCALE
+    model_profile: str = DEFAULT_MODEL_PROFILE
 
     def __post_init__(self) -> None:
-        self.K = lqr_from_matlab.solve_lqr_from_matlab().K.astype(np.float64)
+        self.K = lqr_from_matlab.solve_lqr_from_matlab(model_profile=self.model_profile).K.astype(np.float64)
 
     def predict(self, obs: np.ndarray) -> np.ndarray:
         raw_obs = np.asarray(obs, dtype=np.float64) * OBSERVATION_SCALE

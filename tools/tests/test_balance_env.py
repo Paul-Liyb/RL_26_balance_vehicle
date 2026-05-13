@@ -22,6 +22,13 @@ class BalanceStandEnvTests(unittest.TestCase):
         self.assertIn("raw_obs", info)
         np.testing.assert_allclose(obs, env.normalize_obs(info["raw_obs"]))
 
+    def test_measured_profile_changes_dynamics(self) -> None:
+        vendor_env = BalanceStandEnv(seed=123, model_profile="vendor_matlab")
+        measured_env = BalanceStandEnv(seed=123, model_profile="measured_estimate")
+        self.assertEqual(measured_env.model_profile, "measured_estimate")
+        self.assertFalse(np.allclose(vendor_env.G, measured_env.G, atol=1e-9, rtol=0.0))
+        self.assertFalse(np.allclose(vendor_env.H, measured_env.H, atol=1e-9, rtol=0.0))
+
     def test_seeded_rollout_is_reproducible(self) -> None:
         env1 = BalanceStandEnv(seed=7)
         env2 = BalanceStandEnv(seed=7)
@@ -129,6 +136,28 @@ class BalanceStandEnvTests(unittest.TestCase):
         np.testing.assert_allclose(base_step[4]["physical_action"], residual_step[4]["physical_action"], atol=1e-8)
         np.testing.assert_allclose(residual_step[4]["teacher_action"], teacher_action, atol=1e-8)
         np.testing.assert_allclose(residual_step[4]["residual_action"], np.zeros(2, dtype=np.float32), atol=1e-8)
+
+    def test_residual_lqr_mode_uses_wrapped_env_model_profile(self) -> None:
+        base_env = BalanceStandEnv(seed=12, model_profile="measured_estimate")
+        residual_env = make_env(
+            seed=12,
+            action_mode="residual_lqr",
+            residual_scale=0.15,
+            model_profile="measured_estimate",
+        )
+        teacher = LqrPolicy(model_profile="measured_estimate")
+
+        base_obs, _ = base_env.reset(seed=12)
+        residual_obs, _ = residual_env.reset(seed=12)
+        np.testing.assert_allclose(base_obs, residual_obs)
+
+        teacher_action = teacher.predict(base_obs)
+        base_step = base_env.step(teacher_action)
+        residual_step = residual_env.step(np.zeros(2, dtype=np.float32))
+
+        np.testing.assert_allclose(base_step[0], residual_step[0], atol=1e-8)
+        np.testing.assert_allclose(base_step[4]["physical_action"], residual_step[4]["physical_action"], atol=1e-8)
+        np.testing.assert_allclose(residual_step[4]["teacher_action"], teacher_action, atol=1e-8)
 
 
 if __name__ == "__main__":

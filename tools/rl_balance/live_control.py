@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .config import DEFAULT_MODEL_PROFILE, MODEL_PROFILES
 from .policies import LqrPolicy, SB3Policy
 
 
@@ -67,10 +68,11 @@ class SocketController:
     policy_type: str
     model_path: Path | None = None
     algorithm: str | None = None
+    model_profile: str = DEFAULT_MODEL_PROFILE
 
     def __post_init__(self) -> None:
         if self.policy_type == "lqr":
-            self.policy = LqrPolicy()
+            self.policy = LqrPolicy(model_profile=self.model_profile)
         else:
             if self.model_path is None or self.algorithm is None:
                 raise ValueError("Model path and algorithm are required for RL live control")
@@ -108,6 +110,7 @@ def main() -> int:
     parser.add_argument("--policy", choices=["lqr", "rl"], default="lqr")
     parser.add_argument("--algo", choices=["sac", "td3", "ppo"], help="Algorithm used by the RL checkpoint.")
     parser.add_argument("--model-path", type=Path, help="Path to the saved RL checkpoint.")
+    parser.add_argument("--model-profile", choices=MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     args = parser.parse_args()
 
     controller = SocketController(
@@ -116,6 +119,7 @@ def main() -> int:
         policy_type=args.policy,
         model_path=args.model_path,
         algorithm=args.algo,
+        model_profile=args.model_profile,
     )
     controller.run()
     return 0

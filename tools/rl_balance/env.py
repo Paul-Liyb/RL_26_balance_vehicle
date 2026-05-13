@@ -16,9 +16,11 @@ from .config import (
     ACTION_SCALE,
     DEFAULT_ACTION_MODE,
     DEFAULT_MAX_STEPS,
+    DEFAULT_MODEL_PROFILE,
     DEFAULT_RESET_PROFILE,
     DEFAULT_REWARD_PROFILE,
     DEFAULT_RESIDUAL_SCALE,
+    MODEL_PROFILES,
     OBSERVATION_SCALE,
     RESET_PROFILES,
     REWARD_PROFILES,
@@ -44,15 +46,19 @@ class BalanceStandEnv(gym.Env[np.ndarray, np.ndarray]):
         max_steps: int = DEFAULT_MAX_STEPS,
         reset_profile: str = DEFAULT_RESET_PROFILE,
         reward_profile: str = DEFAULT_REWARD_PROFILE,
+        model_profile: str = DEFAULT_MODEL_PROFILE,
     ) -> None:
         super().__init__()
         if reset_profile not in RESET_PROFILES:
             raise ValueError(f"Unsupported reset profile: {reset_profile}")
         if reward_profile not in REWARD_PROFILES:
             raise ValueError(f"Unsupported reward profile: {reward_profile}")
-        result = lqr_from_matlab.solve_lqr_from_matlab()
+        if model_profile not in MODEL_PROFILES:
+            raise ValueError(f"Unsupported model profile: {model_profile}")
+        result = lqr_from_matlab.solve_lqr_from_matlab(model_profile=model_profile)
         self.G = result.G.astype(np.float64)
         self.H = result.H.astype(np.float64)
+        self.model_profile = model_profile
         self.obs_scale = OBSERVATION_SCALE.copy()
         self.reward_profile = reward_profile
         self.reward_weights = REWARD_PROFILES[reward_profile].copy()
@@ -148,7 +154,7 @@ class ResidualLQREnv(gym.Wrapper):
         if residual_scale <= 0.0:
             raise ValueError(f"Residual scale must be positive, got {residual_scale}")
         self.residual_scale = float(residual_scale)
-        self.teacher = LqrPolicy()
+        self.teacher = LqrPolicy(model_profile=env.model_profile)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = env.observation_space
 
@@ -179,6 +185,7 @@ def make_action_env(
     reward_profile: str = DEFAULT_REWARD_PROFILE,
     action_mode: str = DEFAULT_ACTION_MODE,
     residual_scale: float = DEFAULT_RESIDUAL_SCALE,
+    model_profile: str = DEFAULT_MODEL_PROFILE,
 ) -> gym.Env:
     if action_mode not in ACTION_MODES:
         raise ValueError(f"Unsupported action mode: {action_mode}")
@@ -187,6 +194,7 @@ def make_action_env(
         max_steps=max_steps,
         reset_profile=reset_profile,
         reward_profile=reward_profile,
+        model_profile=model_profile,
     )
     if action_mode == "residual_lqr":
         return ResidualLQREnv(env, residual_scale=residual_scale)

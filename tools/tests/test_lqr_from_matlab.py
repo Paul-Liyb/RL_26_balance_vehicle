@@ -18,6 +18,21 @@ class LqrFromMatlabTests(unittest.TestCase):
         max_abs_diff = np.max(np.abs(result.K - reference))
         self.assertLessEqual(max_abs_diff, 5e-4)
 
+    def test_measured_profile_uses_estimated_robot_dimensions(self) -> None:
+        params = lqr.get_physical_params("measured_estimate")
+        self.assertAlmostEqual(params.m_1, 1.0)
+        self.assertAlmostEqual(params.m_2, 0.1)
+        self.assertAlmostEqual(params.r, 0.0325)
+        self.assertAlmostEqual(params.L_1, 0.160)
+        self.assertAlmostEqual(params.L_2, 0.390)
+        self.assertAlmostEqual(params.l_1, 0.055)
+        self.assertAlmostEqual(params.I_1, 0.0022)
+
+    def test_measured_profile_gain_differs_from_vendor_profile(self) -> None:
+        vendor = lqr.solve_lqr_from_matlab(model_profile="vendor_matlab")
+        measured = lqr.solve_lqr_from_matlab(model_profile="measured_estimate")
+        self.assertFalse(np.allclose(vendor.K, measured.K, atol=1e-3, rtol=0.0))
+
     def test_control_and_wifi_files_match(self) -> None:
         project_root = TOOLS_DIR.parents[0]
         control_path = lqr.default_control_path(project_root)
@@ -30,6 +45,11 @@ class LqrFromMatlabTests(unittest.TestCase):
 
     def test_system_is_controllable(self) -> None:
         result = lqr.solve_lqr_from_matlab()
+        tc = lqr.controllability_matrix(result.G, result.H)
+        self.assertEqual(np.linalg.matrix_rank(tc), 8)
+
+    def test_measured_profile_system_is_controllable(self) -> None:
+        result = lqr.solve_lqr_from_matlab(model_profile="measured_estimate")
         tc = lqr.controllability_matrix(result.G, result.H)
         self.assertEqual(np.linalg.matrix_rank(tc), 8)
 

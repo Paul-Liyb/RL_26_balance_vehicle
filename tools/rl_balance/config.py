@@ -7,11 +7,15 @@ from pathlib import Path
 
 import numpy as np
 
+import lqr_from_matlab
+
 OBSERVATION_SCALE = np.array([0.5, 0.5, 0.2, 0.25, 12.0, 12.0, 12.0, 12.0], dtype=np.float64)
 ACTION_SCALE = 6000.0
 ACTION_MODES = ("direct", "residual_lqr")
 DEFAULT_ACTION_MODE = "direct"
 DEFAULT_RESIDUAL_SCALE = 0.15
+MODEL_PROFILES = lqr_from_matlab.available_model_profiles()
+DEFAULT_MODEL_PROFILE = lqr_from_matlab.DEFAULT_MODEL_PROFILE
 RESET_PROFILES = {
     "default": np.array([0.05, 0.05, 0.12, 0.12, 0.5, 0.5, 0.5, 0.5], dtype=np.float64),
     "narrow": np.array([0.03, 0.03, 0.06, 0.06, 0.3, 0.3, 0.3, 0.3], dtype=np.float64),
@@ -83,6 +87,7 @@ class TrainConfig:
     sac_profile: str = DEFAULT_SAC_PROFILE
     action_mode: str = DEFAULT_ACTION_MODE
     residual_scale: float = DEFAULT_RESIDUAL_SCALE
+    model_profile: str = DEFAULT_MODEL_PROFILE
 
 
 ALGO_DEFAULTS = {

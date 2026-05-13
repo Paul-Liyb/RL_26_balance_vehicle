@@ -1,6 +1,6 @@
 # 平衡车强化学习仿真项目
 
-本仓库用于小组协作开发平衡车站立控制的强化学习仿真实验。代码基于厂商 MATLAB/LQR 线性模型，封装了 Gymnasium 环境，并提供 `LQR`、`SAC`、`TD3`、`PPO` 的训练、评估和画图流程。
+本仓库用于小组协作开发平衡车站立控制的强化学习仿真实验。代码封装了 Gymnasium 环境，并提供 `LQR`、`SAC`、`TD3`、`PPO` 的训练、评估和画图流程。
 
 ## 目录说明
 
@@ -31,6 +31,7 @@ python -m pip install -r requirements.txt
 ```bash
 python -m unittest discover -v tools/tests
 python tools/lqr_from_matlab.py
+python tools/lqr_from_matlab.py --model-profile measured_estimate
 ```
 
 ## 常用命令
@@ -39,6 +40,7 @@ python tools/lqr_from_matlab.py
 
 ```bash
 python tools/train.py --algo sac --device cpu --output-dir tools/artifacts/smoke --seeds 0 --timesteps 10000 --eval-freq 5000 --eval-episodes 5
+python tools/train.py --algo sac --model-profile measured_estimate --device cpu --output-dir tools/artifacts/measured_smoke --seeds 0 --timesteps 10000 --eval-freq 5000 --eval-episodes 5
 ```
 
 评估：
@@ -69,6 +71,8 @@ python tools/run_full_experiment.py
 
 简要结论：
 
+- 默认 `vendor_matlab` 保留厂商 MATLAB 参数。
+- `measured_estimate` 使用当前实车估计参数：整车约 `1.1kg`，上杆 `0.1kg`，轮半径约 `0.0325m`，上杆 `0.39m`，底盘质心低位估计。
 - `LQR` 是当前最强基线。
 - `SAC` 是当前最值得继续优化的 RL 方法。
 - `PPO` 和 `TD3` 当前表现较弱。

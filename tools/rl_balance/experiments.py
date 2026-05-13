@@ -19,6 +19,7 @@ from .config import (
     ACTION_SCALE,
     ALGO_DEFAULTS,
     DEFAULT_ACTION_MODE,
+    DEFAULT_MODEL_PROFILE,
     DEFAULT_RESET_PROFILE,
     DEFAULT_REWARD_PROFILE,
     DEFAULT_RESIDUAL_SCALE,
@@ -62,6 +63,7 @@ def make_env(
     reward_profile: str = DEFAULT_REWARD_PROFILE,
     action_mode: str = DEFAULT_ACTION_MODE,
     residual_scale: float = DEFAULT_RESIDUAL_SCALE,
+    model_profile: str = DEFAULT_MODEL_PROFILE,
 ) -> Any:
     kwargs: dict[str, Any] = {}
     if seed is not None:
@@ -72,6 +74,7 @@ def make_env(
     kwargs["reward_profile"] = reward_profile
     kwargs["action_mode"] = action_mode
     kwargs["residual_scale"] = residual_scale
+    kwargs["model_profile"] = model_profile
     return make_action_env(**kwargs)
 
 
@@ -182,6 +185,7 @@ class EvalAndSaveCallback(BaseCallback):
         *,
         action_mode: str = DEFAULT_ACTION_MODE,
         residual_scale: float = DEFAULT_RESIDUAL_SCALE,
+        model_profile: str = DEFAULT_MODEL_PROFILE,
     ) -> None:
         super().__init__(verbose=0)
         self.algo = algo
@@ -191,6 +195,7 @@ class EvalAndSaveCallback(BaseCallback):
         self.output_dir = output_dir
         self.action_mode = action_mode
         self.residual_scale = residual_scale
+        self.model_profile = model_profile
         self.metrics_path = output_dir / "metrics.csv"
         self.best_path = output_dir / "best_model.zip"
         self.start_time = start_time
@@ -215,7 +220,12 @@ class EvalAndSaveCallback(BaseCallback):
     def _on_step(self) -> bool:
         if self.eval_freq <= 0 or self.n_calls % self.eval_freq != 0:
             return True
-        eval_env = make_env(seed=self.seed, action_mode=self.action_mode, residual_scale=self.residual_scale)
+        eval_env = make_env(
+            seed=self.seed,
+            action_mode=self.action_mode,
+            residual_scale=self.residual_scale,
+            model_profile=self.model_profile,
+        )
         metrics, _ = evaluate_policy(
             eval_env,
             SB3Policy(self.model),
@@ -252,6 +262,7 @@ def train_single_run(config: TrainConfig) -> dict[str, Any]:
         reward_profile=config.train_reward_profile,
         action_mode=config.action_mode,
         residual_scale=config.residual_scale,
+        model_profile=config.model_profile,
     )
     model = build_model(
         config.algo,
@@ -270,6 +281,7 @@ def train_single_run(config: TrainConfig) -> dict[str, Any]:
         start_time=start_time,
         action_mode=config.action_mode,
         residual_scale=config.residual_scale,
+        model_profile=config.model_profile,
     )
     model.learn(total_timesteps=config.timesteps, callback=callback, progress_bar=False)
     elapsed = time.time() - start_time
@@ -291,6 +303,7 @@ def train_single_run(config: TrainConfig) -> dict[str, Any]:
         "sac_profile": config.sac_profile,
         "action_mode": config.action_mode,
         "residual_scale": config.residual_scale,
+        "model_profile": config.model_profile,
     }
     with (output_dir / "run_metadata.json").open("w", encoding="utf-8") as handle:
         json.dump(metadata, handle, indent=2)
@@ -328,15 +341,37 @@ def collect_training_curves(input_dir: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def evaluate_saved_runs(input_dir: Path, episodes: int) -> tuple[list[dict[str, Any]], list[EpisodeTrace]]:
+def evaluate_saved_runs(
+    input_dir: Path,
+    episodes: int,
+    model_profile: str | None = None,
+) -> tuple[list[dict[str, Any]], list[EpisodeTrace]]:
     rows: list[dict[str, Any]] = []
     best_trace: list[EpisodeTrace] = []
     best_success = float("-inf")
+    run_entries: list[tuple[Path, dict[str, Any]]] = []
+    metadata_profiles: set[str] = set()
 
-    baseline_env = make_env(seed=0)
+    for best_model_path in sorted(input_dir.glob("*/*/best_model.zip")):
+        metadata_path = best_model_path.parent / "run_metadata.json"
+        metadata: dict[str, Any] = {}
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if "model_profile" in metadata:
+                metadata_profiles.add(str(metadata["model_profile"]))
+        run_entries.append((best_model_path, metadata))
+
+    if model_profile is not None:
+        baseline_profile = model_profile
+    elif len(metadata_profiles) == 1:
+        baseline_profile = next(iter(metadata_profiles))
+    else:
+        baseline_profile = DEFAULT_MODEL_PROFILE
+
+    baseline_env = make_env(seed=0, model_profile=baseline_profile)
     baseline_metrics, baseline_trace = evaluate_policy(
         baseline_env,
-        LqrPolicy(),
+        LqrPolicy(model_profile=baseline_profile),
         episodes,
         seed_offset=0,
         algorithm="lqr",
@@ -344,21 +379,23 @@ def evaluate_saved_runs(input_dir: Path, episodes: int) -> tuple[list[dict[str, 
         wall_clock_train_time=0.0,
         capture_trace=True,
     )
-    rows.append({"algorithm": "lqr", "seed": -1, **asdict(baseline_metrics)})
+    rows.append({"algorithm": "lqr", "seed": -1, "model_profile": baseline_profile, **asdict(baseline_metrics)})
     best_trace = baseline_trace
     best_success = baseline_metrics.success_rate
     baseline_env.close()
 
-    for best_model_path in input_dir.glob("*/*/best_model.zip"):
+    for best_model_path, metadata in run_entries:
         algo = best_model_path.parent.parent.name
         seed = int(best_model_path.parent.name.split("_")[-1])
-        metadata_path = best_model_path.parent / "run_metadata.json"
-        metadata = {}
-        if metadata_path.exists():
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         action_mode = str(metadata.get("action_mode", DEFAULT_ACTION_MODE))
         residual_scale = float(metadata.get("residual_scale", DEFAULT_RESIDUAL_SCALE))
-        env = make_env(seed=seed, action_mode=action_mode, residual_scale=residual_scale)
+        run_model_profile = model_profile or str(metadata.get("model_profile", DEFAULT_MODEL_PROFILE))
+        env = make_env(
+            seed=seed,
+            action_mode=action_mode,
+            residual_scale=residual_scale,
+            model_profile=run_model_profile,
+        )
         metrics, trace = evaluate_policy(
             env,
             SB3Policy.load(algo, best_model_path),
@@ -369,7 +406,7 @@ def evaluate_saved_runs(input_dir: Path, episodes: int) -> tuple[list[dict[str, 
             wall_clock_train_time=float(metadata.get("wall_clock_train_time", 0.0)),
             capture_trace=True,
         )
-        row = {"algorithm": algo, "seed": seed, **asdict(metrics)}
+        row = {"algorithm": algo, "seed": seed, "model_profile": run_model_profile, **asdict(metrics)}
         rows.append(row)
         if metrics.success_rate >= best_success:
             best_success = metrics.success_rate
@@ -381,12 +418,15 @@ def evaluate_saved_runs(input_dir: Path, episodes: int) -> tuple[list[dict[str, 
 def aggregate_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        grouped.setdefault(str(row["algorithm"]), []).append(row)
+        model_profile = str(row.get("model_profile", DEFAULT_MODEL_PROFILE))
+        grouped.setdefault(f"{row['algorithm']}|{model_profile}", []).append(row)
     aggregate_rows: list[dict[str, Any]] = []
-    for algo, algo_rows in grouped.items():
+    for group_key, algo_rows in grouped.items():
+        algo, model_profile = group_key.split("|", 1)
         aggregate_rows.append(
             {
                 "algorithm": algo,
+                "model_profile": model_profile,
                 "runs": len(algo_rows),
                 "success_rate": float(np.mean([float(r["success_rate"]) for r in algo_rows])),
                 "mean_episode_length": float(np.mean([float(r["mean_episode_length"]) for r in algo_rows])),

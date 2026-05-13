@@ -10,8 +10,10 @@ from rl_balance.config import (
     ACTION_MODES,
     ALGO_DEFAULTS,
     DEFAULT_OUTPUT_DIR,
+    DEFAULT_MODEL_PROFILE,
     DEFAULT_RESIDUAL_SCALE,
     DEFAULT_SEEDS,
+    MODEL_PROFILES,
     RESET_PROFILES,
     REWARD_PROFILES,
     SAC_PROFILES,
@@ -34,6 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sac-profile", choices=sorted(SAC_PROFILES.keys()), default="default")
     parser.add_argument("--action-mode", choices=ACTION_MODES, default="direct")
     parser.add_argument("--residual-scale", type=float, default=DEFAULT_RESIDUAL_SCALE)
+    parser.add_argument("--model-profile", choices=MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     return parser.parse_args()
 
 
@@ -54,6 +57,7 @@ def main() -> int:
             sac_profile=args.sac_profile,
             action_mode=args.action_mode,
             residual_scale=args.residual_scale,
+            model_profile=args.model_profile,
         )
         train_single_run(config)
     return 0

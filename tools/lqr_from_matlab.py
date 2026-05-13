@@ -22,6 +22,22 @@ WIFI_RELATIVE_PATH = Path("平衡车补充资料/wifi3.0.py")
 
 
 @dataclass(frozen=True)
+class PhysicalParams:
+    """Physical parameters for the linearized balance-car model."""
+
+    m_1: float
+    m_2: float
+    r: float
+    L_1: float
+    L_2: float
+    l_1: float
+    l_2: float
+    I_1: float
+    I_2: float
+    g: float = 9.8
+
+
+@dataclass(frozen=True)
 class LqrResult:
     A: np.ndarray
     B: np.ndarray
@@ -32,18 +48,65 @@ class LqrResult:
     K: np.ndarray
 
 
-def build_continuous_model() -> tuple[np.ndarray, np.ndarray]:
-    """Build the continuous-time A/B matrices from the MATLAB source."""
-    m_1 = 0.9
-    m_2 = 0.1
-    r = 0.0335
-    L_1 = 0.126
-    L_2 = 0.390
-    l_1 = L_1 / 2.0
-    l_2 = L_2 / 2.0
-    g = 9.8
-    I_1 = (1.0 / 12.0) * m_1 * L_1**2
-    I_2 = (1.0 / 12.0) * m_2 * L_2**2
+def rod_inertia_about_center(mass: float, length: float) -> float:
+    return (1.0 / 12.0) * mass * length**2
+
+
+VENDOR_MATLAB_PARAMS = PhysicalParams(
+    m_1=0.9,
+    m_2=0.1,
+    r=0.0335,
+    L_1=0.126,
+    L_2=0.390,
+    l_1=0.126 / 2.0,
+    l_2=0.390 / 2.0,
+    I_1=rod_inertia_about_center(0.9, 0.126),
+    I_2=rod_inertia_about_center(0.1, 0.390),
+)
+
+MEASURED_ESTIMATE_PARAMS = PhysicalParams(
+    m_1=1.0,
+    m_2=0.1,
+    r=0.0325,
+    L_1=0.160,
+    L_2=0.390,
+    l_1=0.055,
+    l_2=0.195,
+    I_1=0.0022,
+    I_2=rod_inertia_about_center(0.1, 0.390),
+)
+
+DEFAULT_MODEL_PROFILE = "vendor_matlab"
+MODEL_PROFILES: dict[str, PhysicalParams] = {
+    DEFAULT_MODEL_PROFILE: VENDOR_MATLAB_PARAMS,
+    "measured_estimate": MEASURED_ESTIMATE_PARAMS,
+}
+
+
+def available_model_profiles() -> tuple[str, ...]:
+    return tuple(MODEL_PROFILES.keys())
+
+
+def get_physical_params(model_profile: str = DEFAULT_MODEL_PROFILE) -> PhysicalParams:
+    try:
+        return MODEL_PROFILES[model_profile]
+    except KeyError as exc:
+        profiles = ", ".join(available_model_profiles())
+        raise ValueError(f"Unsupported model profile: {model_profile}. Available profiles: {profiles}") from exc
+
+
+def build_continuous_model(model_profile: str = DEFAULT_MODEL_PROFILE) -> tuple[np.ndarray, np.ndarray]:
+    """Build continuous-time A/B matrices for a selected physical profile."""
+    params = get_physical_params(model_profile)
+    m_1 = params.m_1
+    m_2 = params.m_2
+    r = params.r
+    L_1 = params.L_1
+    l_1 = params.l_1
+    l_2 = params.l_2
+    g = params.g
+    I_1 = params.I_1
+    I_2 = params.I_2
 
     p = np.array(
         [
@@ -92,9 +155,9 @@ def build_continuous_model() -> tuple[np.ndarray, np.ndarray]:
     return A, B
 
 
-def solve_lqr_from_matlab(ts: float = 0.01) -> LqrResult:
+def solve_lqr_from_matlab(ts: float = 0.01, model_profile: str = DEFAULT_MODEL_PROFILE) -> LqrResult:
     """Replicate c2d + dlqr from the MATLAB script."""
-    A, B = build_continuous_model()
+    A, B = build_continuous_model(model_profile=model_profile)
     G, H, _, _, _ = cont2discrete((A, B, np.eye(8), np.zeros((8, 2))), ts, method="zoh")
     Q = np.diag([51.2938, 51.2938, 32.8281, 131.3123, 51.2938, 51.2938, 131.3123, 131.3123])
     R = 0.0005 * np.eye(2)
@@ -170,13 +233,20 @@ def main() -> int:
     parser.add_argument("--project-root", type=Path, default=default_project_root())
     parser.add_argument("--atol", type=float, default=5e-4, help="Absolute tolerance for gain comparison.")
     parser.add_argument("--show-matrices", action="store_true", help="Print A/B/G/H/Q/R matrices.")
+    parser.add_argument(
+        "--model-profile",
+        choices=available_model_profiles(),
+        default=DEFAULT_MODEL_PROFILE,
+        help="Physical model profile used to build A/B and LQR gains.",
+    )
     args = parser.parse_args()
 
     project_root = args.project_root.resolve()
     control_path = default_control_path(project_root)
     wifi_path = default_wifi_path(project_root)
 
-    result = solve_lqr_from_matlab()
+    params = get_physical_params(args.model_profile)
+    result = solve_lqr_from_matlab(model_profile=args.model_profile)
     tc = controllability_matrix(result.G, result.H)
     control_rank = int(np.linalg.matrix_rank(tc))
 
@@ -185,8 +255,17 @@ def main() -> int:
     print(f"Project root: {project_root}")
     print(f"Control file: {control_path}")
     print(f"WiFi script: {wifi_path}")
+    print(f"Model profile: {args.model_profile}")
     print(f"Discrete sample time Ts: 0.01 s")
     print(f"Controllability rank: {control_rank}")
+    print("Physical parameters:")
+    print(
+        "  "
+        f"m_1={params.m_1:.4f}, m_2={params.m_2:.4f}, r={params.r:.4f}, "
+        f"L_1={params.L_1:.4f}, L_2={params.L_2:.4f}, "
+        f"l_1={params.l_1:.4f}, l_2={params.l_2:.4f}, "
+        f"I_1={params.I_1:.6f}, I_2={params.I_2:.6f}, g={params.g:.4f}"
+    )
     print()
 
     print("K1 =")
@@ -216,20 +295,25 @@ def main() -> int:
         print(result.R)
         print()
 
-    builtin_reference = firmware_gain_reference()
-    print(describe_difference("Built-in reference", result.K, builtin_reference, args.atol))
+    if args.model_profile == DEFAULT_MODEL_PROFILE:
+        builtin_reference = firmware_gain_reference()
+        print(describe_difference("Built-in reference", result.K, builtin_reference, args.atol))
 
-    if control_path.exists():
-        control_gain = parse_gain_matrix_from_file(control_path)
-        print(describe_difference("control.c", result.K, control_gain, args.atol))
-    else:
-        print(f"control.c: SKIP ({control_path} not found)")
+        if control_path.exists():
+            control_gain = parse_gain_matrix_from_file(control_path)
+            print(describe_difference("control.c", result.K, control_gain, args.atol))
+        else:
+            print(f"control.c: SKIP ({control_path} not found)")
 
-    if wifi_path.exists():
-        wifi_gain = parse_gain_matrix_from_file(wifi_path)
-        print(describe_difference("wifi3.0.py", result.K, wifi_gain, args.atol))
+        if wifi_path.exists():
+            wifi_gain = parse_gain_matrix_from_file(wifi_path)
+            print(describe_difference("wifi3.0.py", result.K, wifi_gain, args.atol))
+        else:
+            print(f"wifi3.0.py: SKIP ({wifi_path} not found)")
     else:
-        print(f"wifi3.0.py: SKIP ({wifi_path} not found)")
+        print("Built-in reference: SKIP (reference gains are for vendor_matlab)")
+        print("control.c: SKIP (firmware gains are for vendor_matlab)")
+        print("wifi3.0.py: SKIP (WiFi script gains are for vendor_matlab)")
 
     return 0
 
