@@ -29,6 +29,7 @@ WHEELTEC+B585+DP2+二阶平衡机器人附送资料/
 *.mp4
 *.apk
 *.pdf
+小组资料/
 
 # Keep the curated MATLAB reference files in Git.
 !matlab_reference/

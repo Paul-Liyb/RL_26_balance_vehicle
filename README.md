@@ -55,6 +55,12 @@ python tools/evaluate.py --input-dir tools/artifacts/smoke --output-dir tools/ar
 python tools/plot_results.py --input-dir tools/artifacts/smoke/summary --output-dir tools/artifacts/smoke/plots
 ```
 
+实车日志拟合：
+
+```bash
+python tools/fit_real_log_model.py
+```
+
 完整流程：
 
 ```bash
