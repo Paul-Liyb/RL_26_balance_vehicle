@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import gymnasium as gym
@@ -24,6 +25,7 @@ from .config import (
     OBSERVATION_SCALE,
     RESET_PROFILES,
     REWARD_PROFILES,
+    SIM_MODEL_PROFILES,
 )
 from .policies import LqrPolicy
 
@@ -33,6 +35,47 @@ class TerminationThresholds:
     body_angle: float = 0.35
     pendulum_angle: float = 0.45
     wheel_speed: float = 20.0
+
+
+@dataclass(frozen=True)
+class EmpiricalModel:
+    profile: str
+    coefficients: np.ndarray
+    base_G: np.ndarray | None = None
+    base_H: np.ndarray | None = None
+
+    def predict(self, state: np.ndarray, action: np.ndarray) -> np.ndarray:
+        features = np.concatenate([state, action, np.ones(1, dtype=np.float64)])
+        correction = features @ self.coefficients
+        if self.base_G is None or self.base_H is None:
+            return correction
+        return self.base_G @ state + self.base_H @ action + correction
+
+
+def default_fit_parameters_path() -> Path:
+    return Path(__file__).resolve().parents[1] / "artifacts" / "model_fit" / "real_log_fit_parameters.npz"
+
+
+def load_empirical_model(model_profile: str) -> EmpiricalModel:
+    path = default_fit_parameters_path()
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Empirical model profile '{model_profile}' requires {path}. "
+            "Run `./start_rl_env.sh python3 fit_real_log_model.py` first."
+        )
+    data = np.load(path, allow_pickle=False)
+    if model_profile == "real_log_fit":
+        return EmpiricalModel(profile=model_profile, coefficients=data["xu_to_x_next_coefficients"].astype(np.float64))
+    if model_profile == "measured_delta_fit":
+        dt = float(data["physics_dt"][0])
+        result = lqr_from_matlab.solve_lqr_from_matlab(ts=dt, model_profile="measured_estimate")
+        return EmpiricalModel(
+            profile=model_profile,
+            coefficients=data["measured_delta_coefficients"].astype(np.float64),
+            base_G=result.G.astype(np.float64),
+            base_H=result.H.astype(np.float64),
+        )
+    raise ValueError(f"Unsupported empirical model profile: {model_profile}")
 
 
 class BalanceStandEnv(gym.Env[np.ndarray, np.ndarray]):
@@ -53,12 +96,18 @@ class BalanceStandEnv(gym.Env[np.ndarray, np.ndarray]):
             raise ValueError(f"Unsupported reset profile: {reset_profile}")
         if reward_profile not in REWARD_PROFILES:
             raise ValueError(f"Unsupported reward profile: {reward_profile}")
-        if model_profile not in MODEL_PROFILES:
+        if model_profile not in SIM_MODEL_PROFILES:
             raise ValueError(f"Unsupported model profile: {model_profile}")
-        result = lqr_from_matlab.solve_lqr_from_matlab(model_profile=model_profile)
-        self.G = result.G.astype(np.float64)
-        self.H = result.H.astype(np.float64)
         self.model_profile = model_profile
+        self.empirical_model: EmpiricalModel | None = None
+        if model_profile in MODEL_PROFILES:
+            result = lqr_from_matlab.solve_lqr_from_matlab(model_profile=model_profile)
+            self.G = result.G.astype(np.float64)
+            self.H = result.H.astype(np.float64)
+        else:
+            self.empirical_model = load_empirical_model(model_profile)
+            self.G = np.zeros((8, 8), dtype=np.float64)
+            self.H = np.zeros((8, 2), dtype=np.float64)
         self.obs_scale = OBSERVATION_SCALE.copy()
         self.reward_profile = reward_profile
         self.reward_weights = REWARD_PROFILES[reward_profile].copy()
@@ -119,7 +168,10 @@ class BalanceStandEnv(gym.Env[np.ndarray, np.ndarray]):
         action = np.asarray(action, dtype=np.float64).reshape(2)
         clipped_action = np.clip(action, -1.0, 1.0)
         physical_action = self.action_scale * clipped_action
-        next_state = self.G @ self.state + self.H @ physical_action
+        if self.empirical_model is None:
+            next_state = self.G @ self.state + self.H @ physical_action
+        else:
+            next_state = self.empirical_model.predict(self.state, physical_action)
         self.state = next_state.astype(np.float64)
         self.steps += 1
 
@@ -154,7 +206,8 @@ class ResidualLQREnv(gym.Wrapper):
         if residual_scale <= 0.0:
             raise ValueError(f"Residual scale must be positive, got {residual_scale}")
         self.residual_scale = float(residual_scale)
-        self.teacher = LqrPolicy(model_profile=env.model_profile)
+        teacher_profile = env.model_profile if env.model_profile in MODEL_PROFILES else "measured_estimate"
+        self.teacher = LqrPolicy(model_profile=teacher_profile)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = env.observation_space
 

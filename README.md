@@ -61,6 +61,12 @@ python tools/plot_results.py --input-dir tools/artifacts/smoke/summary --output-
 python tools/fit_real_log_model.py
 ```
 
+使用实车日志拟合环境训练：
+
+```bash
+python tools/train.py --algo sac --model-profile real_log_fit --device cpu --output-dir tools/artifacts/real_log_fit_smoke --seeds 0 --timesteps 10000 --eval-freq 5000 --eval-episodes 5
+```
+
 完整流程：
 
 ```bash

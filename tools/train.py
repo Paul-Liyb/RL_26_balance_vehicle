@@ -13,10 +13,10 @@ from rl_balance.config import (
     DEFAULT_MODEL_PROFILE,
     DEFAULT_RESIDUAL_SCALE,
     DEFAULT_SEEDS,
-    MODEL_PROFILES,
     RESET_PROFILES,
     REWARD_PROFILES,
     SAC_PROFILES,
+    SIM_MODEL_PROFILES,
     TrainConfig,
 )
 from rl_balance.experiments import train_single_run
@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sac-profile", choices=sorted(SAC_PROFILES.keys()), default="default")
     parser.add_argument("--action-mode", choices=ACTION_MODES, default="direct")
     parser.add_argument("--residual-scale", type=float, default=DEFAULT_RESIDUAL_SCALE)
-    parser.add_argument("--model-profile", choices=MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
+    parser.add_argument("--model-profile", choices=SIM_MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     return parser.parse_args()
 
 

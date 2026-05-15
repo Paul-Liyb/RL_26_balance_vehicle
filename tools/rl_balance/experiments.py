@@ -23,6 +23,7 @@ from .config import (
     DEFAULT_RESET_PROFILE,
     DEFAULT_REWARD_PROFILE,
     DEFAULT_RESIDUAL_SCALE,
+    MODEL_PROFILES,
     DEFAULT_SAC_PROFILE,
     SAC_PROFILES,
     TrainConfig,
@@ -368,10 +369,11 @@ def evaluate_saved_runs(
     else:
         baseline_profile = DEFAULT_MODEL_PROFILE
 
+    baseline_lqr_profile = baseline_profile if baseline_profile in MODEL_PROFILES else "measured_estimate"
     baseline_env = make_env(seed=0, model_profile=baseline_profile)
     baseline_metrics, baseline_trace = evaluate_policy(
         baseline_env,
-        LqrPolicy(model_profile=baseline_profile),
+        LqrPolicy(model_profile=baseline_lqr_profile),
         episodes,
         seed_offset=0,
         algorithm="lqr",
@@ -379,7 +381,15 @@ def evaluate_saved_runs(
         wall_clock_train_time=0.0,
         capture_trace=True,
     )
-    rows.append({"algorithm": "lqr", "seed": -1, "model_profile": baseline_profile, **asdict(baseline_metrics)})
+    rows.append(
+        {
+            "algorithm": "lqr",
+            "seed": -1,
+            "model_profile": baseline_profile,
+            "baseline_policy_profile": baseline_lqr_profile,
+            **asdict(baseline_metrics),
+        }
+    )
     best_trace = baseline_trace
     best_success = baseline_metrics.success_rate
     baseline_env.close()
@@ -406,7 +416,7 @@ def evaluate_saved_runs(
             wall_clock_train_time=float(metadata.get("wall_clock_train_time", 0.0)),
             capture_trace=True,
         )
-        row = {"algorithm": algo, "seed": seed, "model_profile": run_model_profile, **asdict(metrics)}
+        row = {"algorithm": algo, "seed": seed, "model_profile": run_model_profile, "baseline_policy_profile": "", **asdict(metrics)}
         rows.append(row)
         if metrics.success_rate >= best_success:
             best_success = metrics.success_rate

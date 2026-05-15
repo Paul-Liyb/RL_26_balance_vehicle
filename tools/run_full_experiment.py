@@ -8,14 +8,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from rl_balance.config import DEFAULT_MODEL_PROFILE, MODEL_PROFILES
+from rl_balance.config import DEFAULT_MODEL_PROFILE, SIM_MODEL_PROFILES
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run training, evaluation, and plotting for all algorithms.")
     parser.add_argument("--output-dir", type=Path, default=Path(__file__).resolve().parent / "artifacts")
     parser.add_argument("--device", default="cpu")
-    parser.add_argument("--model-profile", choices=MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
+    parser.add_argument("--model-profile", choices=SIM_MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     return parser.parse_args()
 
 

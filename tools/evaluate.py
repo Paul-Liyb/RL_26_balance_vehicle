@@ -7,7 +7,7 @@ import argparse
 from dataclasses import asdict
 from pathlib import Path
 
-from rl_balance.config import MODEL_PROFILES
+from rl_balance.config import SIM_MODEL_PROFILES
 from rl_balance.experiments import aggregate_summary, collect_training_curves, evaluate_saved_runs, write_summary_csv
 
 
@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument(
         "--model-profile",
-        choices=MODEL_PROFILES,
+        choices=SIM_MODEL_PROFILES,
         help="Override the model profile used for baseline and saved-policy evaluation.",
     )
     return parser.parse_args()
