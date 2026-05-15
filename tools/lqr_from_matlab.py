@@ -52,6 +52,10 @@ def rod_inertia_about_center(mass: float, length: float) -> float:
     return (1.0 / 12.0) * mass * length**2
 
 
+def rectangular_pitch_inertia_about_center(mass: float, height: float, depth: float) -> float:
+    return (1.0 / 12.0) * mass * (height**2 + depth**2)
+
+
 VENDOR_MATLAB_PARAMS = PhysicalParams(
     m_1=0.9,
     m_2=0.1,
@@ -64,16 +68,22 @@ VENDOR_MATLAB_PARAMS = PhysicalParams(
     I_2=rod_inertia_about_center(0.1, 0.390),
 )
 
+MEASURED_TOTAL_HEIGHT = 0.5415
+MEASURED_BODY_DEPTH = 0.065
+MEASURED_ROD_LENGTH = 0.390
+MEASURED_WHEEL_RADIUS = 0.0325
+MEASURED_BODY_HEIGHT = MEASURED_TOTAL_HEIGHT - MEASURED_ROD_LENGTH - MEASURED_WHEEL_RADIUS
+
 MEASURED_ESTIMATE_PARAMS = PhysicalParams(
     m_1=1.0,
     m_2=0.1,
-    r=0.0325,
-    L_1=0.160,
-    L_2=0.390,
+    r=MEASURED_WHEEL_RADIUS,
+    L_1=MEASURED_BODY_HEIGHT,
+    L_2=MEASURED_ROD_LENGTH,
     l_1=0.055,
     l_2=0.195,
-    I_1=0.0022,
-    I_2=rod_inertia_about_center(0.1, 0.390),
+    I_1=rectangular_pitch_inertia_about_center(1.0, MEASURED_BODY_HEIGHT, MEASURED_BODY_DEPTH),
+    I_2=rod_inertia_about_center(0.1, MEASURED_ROD_LENGTH),
 )
 
 DEFAULT_MODEL_PROFILE = "vendor_matlab"

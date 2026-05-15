@@ -23,10 +23,10 @@ class LqrFromMatlabTests(unittest.TestCase):
         self.assertAlmostEqual(params.m_1, 1.0)
         self.assertAlmostEqual(params.m_2, 0.1)
         self.assertAlmostEqual(params.r, 0.0325)
-        self.assertAlmostEqual(params.L_1, 0.160)
+        self.assertAlmostEqual(params.L_1, 0.119)
         self.assertAlmostEqual(params.L_2, 0.390)
         self.assertAlmostEqual(params.l_1, 0.055)
-        self.assertAlmostEqual(params.I_1, 0.0022)
+        self.assertAlmostEqual(params.I_1, 0.001532, places=6)
 
     def test_measured_profile_gain_differs_from_vendor_profile(self) -> None:
         vendor = lqr.solve_lqr_from_matlab(model_profile="vendor_matlab")

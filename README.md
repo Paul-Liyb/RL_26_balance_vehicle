@@ -72,7 +72,7 @@ python tools/run_full_experiment.py
 简要结论：
 
 - 默认 `vendor_matlab` 保留厂商 MATLAB 参数。
-- `measured_estimate` 使用当前实车估计参数：整车约 `1.1kg`，上杆 `0.1kg`，轮半径约 `0.0325m`，上杆 `0.39m`，底盘质心低位估计。
+- `measured_estimate` 使用当前实车估计参数：整车约 `1.1kg`，上杆 `0.1kg`，尺寸 `184*65*541.5mm(含摆杆)`，轮半径约 `0.0325m`，上杆 `0.39m`。
 - `LQR` 是当前最强基线。
 - `SAC` 是当前最值得继续优化的 RL 方法。
 - `PPO` 和 `TD3` 当前表现较弱。
