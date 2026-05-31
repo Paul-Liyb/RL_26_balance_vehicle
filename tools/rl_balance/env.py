@@ -21,6 +21,7 @@ from .config import (
     DEFAULT_RESET_PROFILE,
     DEFAULT_REWARD_PROFILE,
     DEFAULT_RESIDUAL_SCALE,
+    DISCRETE_ACTION_TABLE,
     MODEL_PROFILES,
     OBSERVATION_SCALE,
     RESET_PROFILES,
@@ -230,6 +231,30 @@ class ResidualLQREnv(gym.Wrapper):
         return obs, reward, terminated, truncated, info
 
 
+class DiscreteDirectActionEnv(gym.ActionWrapper):
+    """Map a small discrete action grid to normalized left/right wheel commands."""
+
+    def __init__(self, env: BalanceStandEnv) -> None:
+        super().__init__(env)
+        self.action_table = DISCRETE_ACTION_TABLE.copy()
+        self.action_space = spaces.Discrete(len(self.action_table))
+        self.observation_space = env.observation_space
+
+    def action(self, action: int | np.integer) -> np.ndarray:
+        action_idx = int(action)
+        if action_idx < 0 or action_idx >= len(self.action_table):
+            raise ValueError(f"Discrete action index out of range: {action_idx}")
+        return self.action_table[action_idx].copy()
+
+    def step(self, action: int | np.integer) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+        action_idx = int(action)
+        obs, reward, terminated, truncated, info = self.env.step(self.action(action_idx))
+        info["action_mode"] = "discrete_direct"
+        info["discrete_action"] = action_idx
+        info["normalized_action"] = self.action_table[action_idx].copy()
+        return obs, reward, terminated, truncated, info
+
+
 def make_action_env(
     *,
     seed: int | None = None,
@@ -251,4 +276,6 @@ def make_action_env(
     )
     if action_mode == "residual_lqr":
         return ResidualLQREnv(env, residual_scale=residual_scale)
+    if action_mode == "discrete_direct":
+        return DiscreteDirectActionEnv(env)
     return env

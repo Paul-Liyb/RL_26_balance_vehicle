@@ -96,7 +96,10 @@ class SocketController:
                 buffer = buffer[end + 1 :]
                 raw_obs = StateFrameCodec.extract_state_for_policy(frame)
                 normalized_obs = raw_obs / np.array([0.5, 0.5, 0.2, 0.25, 12.0, 12.0, 12.0, 12.0], dtype=np.float32)
-                action = np.asarray(self.policy.predict(normalized_obs), dtype=np.float32)
+                if isinstance(self.policy, SB3Policy):
+                    action = self.policy.predict_normalized_action(normalized_obs, self.algorithm or "")
+                else:
+                    action = np.asarray(self.policy.predict(normalized_obs), dtype=np.float32)
                 u = 6000.0 * np.clip(action, -1.0, 1.0)
                 sock.send(ActionPacketCodec.encode(float(u[0]), float(u[1])))
         finally:
@@ -108,7 +111,7 @@ def main() -> int:
     parser.add_argument("--host", default="192.168.4.1")
     parser.add_argument("--port", type=int, default=6390)
     parser.add_argument("--policy", choices=["lqr", "rl"], default="lqr")
-    parser.add_argument("--algo", choices=["sac", "td3", "ppo"], help="Algorithm used by the RL checkpoint.")
+    parser.add_argument("--algo", choices=["sac", "td3", "ppo", "dqn"], help="Algorithm used by the RL checkpoint.")
     parser.add_argument("--model-path", type=Path, help="Path to the saved RL checkpoint.")
     parser.add_argument("--model-profile", choices=MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     args = parser.parse_args()

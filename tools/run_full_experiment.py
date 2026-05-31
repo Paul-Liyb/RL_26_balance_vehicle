@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     tools_dir = Path(__file__).resolve().parent
-    for algo in ("sac", "td3", "ppo"):
+    for algo in ("sac", "td3", "ppo", "dqn"):
         subprocess.check_call(
             [
                 sys.executable,

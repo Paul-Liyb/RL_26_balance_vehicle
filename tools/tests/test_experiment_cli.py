@@ -181,6 +181,36 @@ class ExperimentCliTests(unittest.TestCase):
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
             self.assertEqual(metadata["model_profile"], "measured_estimate")
 
+    def test_train_cli_runs_dqn_with_discrete_action_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "runs"
+            cmd = [
+                "python3",
+                str(TRAIN_SCRIPT),
+                "--algo",
+                "dqn",
+                "--timesteps",
+                "128",
+                "--seeds",
+                "0",
+                "--eval-freq",
+                "64",
+                "--eval-episodes",
+                "2",
+                "--model-profile",
+                "measured_estimate",
+                "--output-dir",
+                str(out_dir),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            metadata_path = out_dir / "dqn" / "seed_0" / "run_metadata.json"
+            self.assertTrue((out_dir / "dqn" / "seed_0" / "best_model.zip").exists())
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(metadata["algo"], "dqn")
+            self.assertEqual(metadata["action_mode"], "discrete_direct")
+            self.assertEqual(metadata["model_profile"], "measured_estimate")
+
     def test_evaluate_and_plot_scripts_generate_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             out_dir = Path(temp_dir) / "runs"

@@ -45,6 +45,19 @@ class ExperimentCoreTests(unittest.TestCase):
         self.assertIn("residual_action", info)
         env.close()
 
+    def test_dqn_builds_on_discrete_action_env(self) -> None:
+        env = make_env(seed=0, action_mode="discrete_direct")
+        model = build_model("dqn", env, seed=0)
+        self.assertEqual(env.action_space.n, 9)
+        self.assertEqual(model.action_space.n, 9)
+        env.close()
+
+    def test_dqn_rejects_continuous_action_env(self) -> None:
+        env = make_env(seed=0)
+        with self.assertRaisesRegex(ValueError, "discrete_direct"):
+            build_model("dqn", env, seed=0)
+        env.close()
+
     def test_make_env_passes_model_profile_to_base_env(self) -> None:
         env = make_env(seed=0, model_profile="measured_estimate")
         self.assertEqual(env.model_profile, "measured_estimate")

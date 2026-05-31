@@ -1,6 +1,6 @@
 # 平衡车强化学习仿真项目
 
-本仓库用于小组协作开发平衡车站立控制的强化学习仿真实验。代码封装了 Gymnasium 环境，并提供 `LQR`、`SAC`、`TD3`、`PPO` 的训练、评估和画图流程。
+本仓库用于小组协作开发平衡车站立控制的强化学习仿真实验。代码封装了 Gymnasium 环境，并提供 `LQR`、`SAC`、`TD3`、`PPO`、`DQN` 的训练、评估和画图流程。
 
 ## 目录说明
 
@@ -42,6 +42,7 @@ python tools/lqr_from_matlab.py --model-profile measured_estimate
 ```bash
 python tools/train.py --algo sac --device cpu --output-dir tools/artifacts/smoke --seeds 0 --timesteps 10000 --eval-freq 5000 --eval-episodes 5
 python tools/train.py --algo sac --model-profile measured_estimate --device cpu --output-dir tools/artifacts/measured_smoke --seeds 0 --timesteps 10000 --eval-freq 5000 --eval-episodes 5
+python tools/train.py --algo dqn --model-profile measured_estimate --device cpu --output-dir tools/artifacts/dqn_smoke --seeds 0 --timesteps 10000 --eval-freq 5000 --eval-episodes 5
 ```
 
 评估：
@@ -74,6 +75,7 @@ python render_rollout_video.py --policy lqr --model-profile measured_estimate --
 ```bash
 cd tools
 python render_rollout_video.py --policy rl --algo sac --model-path artifacts/measured_smoke/sac/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/sac_measured.gif
+python render_rollout_video.py --policy rl --algo dqn --model-path artifacts/dqn_smoke/dqn/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/dqn_measured.gif
 ```
 
 使用实车日志拟合环境训练：
@@ -102,6 +104,7 @@ python tools/run_full_experiment.py
 - `measured_estimate` 使用当前实车估计参数：整车约 `1.1kg`，上杆 `0.1kg`，尺寸 `184*65*541.5mm(含摆杆)`，轮半径约 `0.0325m`，上杆 `0.39m`。
 - `LQR` 是当前最强基线。
 - `SAC` 是当前最值得继续优化的 RL 方法。
+- `DQN` 已接入离散动作测试路径，默认使用 9 个左右轮动作组合。
 - `PPO` 和 `TD3` 当前表现较弱。
 - 后续上车前需要核对实车参数、状态顺序、动作含义和通信链路。
 

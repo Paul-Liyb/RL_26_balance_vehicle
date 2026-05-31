@@ -15,6 +15,7 @@ python3 -m pip install --user --break-system-packages -r tools/requirements-wsl.
 python3 tools/train.py --algo sac
 python3 tools/train_td3.py
 python3 tools/train_ppo.py
+python3 tools/train_dqn.py
 ```
 
 ## Evaluation And Plots

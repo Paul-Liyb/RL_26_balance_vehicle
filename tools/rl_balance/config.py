@@ -11,7 +11,12 @@ import lqr_from_matlab
 
 OBSERVATION_SCALE = np.array([0.5, 0.5, 0.2, 0.25, 12.0, 12.0, 12.0, 12.0], dtype=np.float64)
 ACTION_SCALE = 6000.0
-ACTION_MODES = ("direct", "residual_lqr")
+DISCRETE_ACTION_VALUES = (-0.5, 0.0, 0.5)
+DISCRETE_ACTION_TABLE = np.asarray(
+    [(left, right) for left in DISCRETE_ACTION_VALUES for right in DISCRETE_ACTION_VALUES],
+    dtype=np.float32,
+)
+ACTION_MODES = ("direct", "residual_lqr", "discrete_direct")
 DEFAULT_ACTION_MODE = "direct"
 DEFAULT_RESIDUAL_SCALE = 0.15
 MODEL_PROFILES = lqr_from_matlab.available_model_profiles()
@@ -111,5 +116,18 @@ ALGO_DEFAULTS = {
         "gae_lambda": 0.95,
         "clip_range": 0.2,
         "train_steps": 500000,
+    },
+    "dqn": {
+        "learning_rate": 1e-4,
+        "gamma": 0.995,
+        "batch_size": 128,
+        "buffer_size": 100000,
+        "learning_starts": 1000,
+        "target_update_interval": 500,
+        "train_freq": 4,
+        "gradient_steps": 1,
+        "exploration_fraction": 0.25,
+        "exploration_final_eps": 0.02,
+        "train_steps": 300000,
     },
 }

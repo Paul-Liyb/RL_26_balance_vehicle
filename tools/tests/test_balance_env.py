@@ -159,6 +159,16 @@ class BalanceStandEnvTests(unittest.TestCase):
         np.testing.assert_allclose(base_step[4]["physical_action"], residual_step[4]["physical_action"], atol=1e-8)
         np.testing.assert_allclose(residual_step[4]["teacher_action"], teacher_action, atol=1e-8)
 
+    def test_discrete_direct_action_mode_maps_indices_to_wheel_commands(self) -> None:
+        env = make_env(seed=13, action_mode="discrete_direct")
+        self.assertEqual(env.action_space.n, 9)
+        env.reset(seed=13)
+        _, _, _, _, info = env.step(8)
+        self.assertEqual(info["action_mode"], "discrete_direct")
+        self.assertEqual(info["discrete_action"], 8)
+        np.testing.assert_allclose(info["normalized_action"], np.array([0.5, 0.5], dtype=np.float32))
+        np.testing.assert_allclose(info["physical_action"], np.array([3000.0, 3000.0], dtype=np.float32))
+
 
 if __name__ == "__main__":
     unittest.main()

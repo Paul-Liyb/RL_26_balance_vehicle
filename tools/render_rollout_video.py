@@ -42,7 +42,8 @@ def collect_rollout(
     seed: int,
     steps: int,
 ) -> list[RolloutFrame]:
-    env = make_env(seed=seed, max_steps=steps, model_profile=model_profile)
+    action_mode = "discrete_direct" if policy_type == "rl" and algo == "dqn" else "direct"
+    env = make_env(seed=seed, max_steps=steps, model_profile=model_profile, action_mode=action_mode)
     if policy_type == "lqr":
         lqr_profile = model_profile if model_profile in lqr_from_matlab.available_model_profiles() else "measured_estimate"
         policy = LqrPolicy(model_profile=lqr_profile)
@@ -172,7 +173,7 @@ def render_rollout(frames: list[RolloutFrame], output_path: Path, fps: int, titl
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Render a 2D GIF rollout from the current balance simulator.")
     parser.add_argument("--policy", choices=["lqr", "rl"], default="lqr")
-    parser.add_argument("--algo", choices=["sac", "td3", "ppo"], help="Algorithm for --policy rl.")
+    parser.add_argument("--algo", choices=["sac", "td3", "ppo", "dqn"], help="Algorithm for --policy rl.")
     parser.add_argument("--model-path", type=Path, help="SB3 checkpoint for --policy rl.")
     parser.add_argument("--model-profile", choices=SIM_MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     parser.add_argument("--seed", type=int, default=0)

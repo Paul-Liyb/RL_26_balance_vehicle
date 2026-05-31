@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Protocol
 
 import numpy as np
-from stable_baselines3 import PPO, SAC, TD3
+from stable_baselines3 import DQN, PPO, SAC, TD3
 
 import lqr_from_matlab
 
-from .config import ACTION_SCALE, DEFAULT_MODEL_PROFILE, OBSERVATION_SCALE
+from .config import ACTION_SCALE, DEFAULT_MODEL_PROFILE, DISCRETE_ACTION_TABLE, OBSERVATION_SCALE
 
 
 class Policy(Protocol):
@@ -36,7 +36,7 @@ class LqrPolicy:
         return action.astype(np.float32)
 
 
-MODEL_CLASSES = {"sac": SAC, "td3": TD3, "ppo": PPO}
+MODEL_CLASSES = {"sac": SAC, "td3": TD3, "ppo": PPO, "dqn": DQN}
 
 
 @dataclass
@@ -45,6 +45,12 @@ class SB3Policy:
 
     def predict(self, obs: np.ndarray) -> np.ndarray:
         action, _ = self.model.predict(obs, deterministic=True)
+        return np.asarray(action, dtype=np.float32)
+
+    def predict_normalized_action(self, obs: np.ndarray, algo: str) -> np.ndarray:
+        action = self.predict(obs)
+        if algo.lower() == "dqn":
+            return DISCRETE_ACTION_TABLE[int(action)].copy()
         return np.asarray(action, dtype=np.float32)
 
     @classmethod

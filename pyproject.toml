@@ -28,6 +28,7 @@ py-modules = [
   "train_sac",
   "train_td3",
   "train_ppo",
+  "train_dqn",
   "evaluate",
   "plot_results",
   "render_rollout_video",

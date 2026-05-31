@@ -11,7 +11,8 @@ from typing import Any
 
 import numpy as np
 import torch
-from stable_baselines3 import PPO, SAC, TD3
+from gymnasium import spaces
+from stable_baselines3 import DQN, PPO, SAC, TD3
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.monitor import Monitor
 
@@ -54,7 +55,7 @@ class EpisodeTrace:
     u_r: float
 
 
-ALGO_CLASSES = {"sac": SAC, "td3": TD3, "ppo": PPO}
+ALGO_CLASSES = {"sac": SAC, "td3": TD3, "ppo": PPO, "dqn": DQN}
 
 
 def make_env(
@@ -99,6 +100,8 @@ def build_model(
     kwargs["policy_kwargs"] = {"net_arch": [128, 128], "activation_fn": torch.nn.ReLU}
     kwargs["device"] = device
     kwargs["seed"] = seed
+    if algo == "dqn" and not isinstance(env.action_space, spaces.Discrete):
+        raise ValueError("DQN requires --action-mode discrete_direct because it only supports discrete actions")
     return ALGO_CLASSES[algo]("MlpPolicy", Monitor(env), verbose=0, **kwargs)
 
 
