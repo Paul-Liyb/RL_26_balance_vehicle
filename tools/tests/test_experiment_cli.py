@@ -10,6 +10,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[1]
 TRAIN_SCRIPT = TOOLS_DIR / "train.py"
 EVAL_SCRIPT = TOOLS_DIR / "evaluate.py"
 PLOT_SCRIPT = TOOLS_DIR / "plot_results.py"
+VIDEO_SCRIPT = TOOLS_DIR / "render_rollout_video.py"
 
 
 class ExperimentCliTests(unittest.TestCase):
@@ -239,6 +240,28 @@ class ExperimentCliTests(unittest.TestCase):
                 "rollout_timeseries.png",
             ]:
                 self.assertTrue((plot_dir / file_name).exists(), msg=file_name)
+
+    def test_render_rollout_video_cli_generates_gif(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "rollout.gif"
+            cmd = [
+                "python3",
+                str(VIDEO_SCRIPT),
+                "--policy",
+                "lqr",
+                "--model-profile",
+                "measured_estimate",
+                "--steps",
+                "3",
+                "--fps",
+                "2",
+                "--output",
+                str(output_path),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue(output_path.exists())
+            self.assertGreater(output_path.stat().st_size, 0)
 
 
 if __name__ == "__main__":

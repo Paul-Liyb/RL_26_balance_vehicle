@@ -30,6 +30,7 @@ py-modules = [
   "train_ppo",
   "evaluate",
   "plot_results",
+  "render_rollout_video",
   "fit_real_log_model",
   "run_full_experiment",
   "live_control",

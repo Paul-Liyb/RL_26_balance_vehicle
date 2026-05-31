@@ -8,6 +8,7 @@
 - `tools/train.py`：训练入口
 - `tools/evaluate.py`：评估入口
 - `tools/plot_results.py`：结果画图入口
+- `tools/render_rollout_video.py`：把仿真 rollout 渲染成 GIF/MP4
 - `tools/lqr_from_matlab.py`：复现 MATLAB/LQR 模型和增益
 - `tools/tests/`：测试代码
 - `matlab_reference/`：关键 MATLAB 参考脚本
@@ -59,6 +60,20 @@ python tools/plot_results.py --input-dir tools/artifacts/smoke/summary --output-
 
 ```bash
 python tools/fit_real_log_model.py
+```
+
+生成仿真动画：
+
+```bash
+cd tools
+python render_rollout_video.py --policy lqr --model-profile measured_estimate --steps 160 --fps 20 --output artifacts/videos/lqr_measured.gif
+```
+
+如果要渲染训练好的模型：
+
+```bash
+cd tools
+python render_rollout_video.py --policy rl --algo sac --model-path artifacts/measured_smoke/sac/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/sac_measured.gif
 ```
 
 使用实车日志拟合环境训练：
