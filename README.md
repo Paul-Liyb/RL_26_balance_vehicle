@@ -67,15 +67,16 @@ python tools/fit_real_log_model.py
 
 ```bash
 cd tools
-python render_rollout_video.py --policy lqr --model-profile measured_estimate --steps 160 --fps 20 --output artifacts/videos/lqr_measured.gif
+python render_rollout_video.py --policy lqr --view 3d --model-profile measured_estimate --steps 160 --fps 20 --output artifacts/videos/lqr_measured_3d.gif
+python render_rollout_video.py --policy lqr --view 2d --model-profile measured_estimate --steps 160 --fps 20 --output artifacts/videos/lqr_measured_2d.gif
 ```
 
 如果要渲染训练好的模型：
 
 ```bash
 cd tools
-python render_rollout_video.py --policy rl --algo sac --model-path artifacts/measured_smoke/sac/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/sac_measured.gif
-python render_rollout_video.py --policy rl --algo dqn --model-path artifacts/dqn_smoke/dqn/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/dqn_measured.gif
+python render_rollout_video.py --policy rl --algo sac --view 3d --model-path artifacts/measured_smoke/sac/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/sac_measured_3d.gif
+python render_rollout_video.py --policy rl --algo dqn --view 3d --model-path artifacts/dqn_smoke/dqn/seed_0/best_model.zip --model-profile measured_estimate --output artifacts/videos/dqn_measured_3d.gif
 ```
 
 使用实车日志拟合环境训练：

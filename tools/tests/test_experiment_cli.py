@@ -279,6 +279,8 @@ class ExperimentCliTests(unittest.TestCase):
                 str(VIDEO_SCRIPT),
                 "--policy",
                 "lqr",
+                "--view",
+                "3d",
                 "--model-profile",
                 "measured_estimate",
                 "--steps",
