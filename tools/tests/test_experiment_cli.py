@@ -11,6 +11,7 @@ TRAIN_SCRIPT = TOOLS_DIR / "train.py"
 EVAL_SCRIPT = TOOLS_DIR / "evaluate.py"
 PLOT_SCRIPT = TOOLS_DIR / "plot_results.py"
 VIDEO_SCRIPT = TOOLS_DIR / "render_rollout_video.py"
+MUJOCO_VIDEO_SCRIPT = TOOLS_DIR / "render_mujoco_rollout.py"
 TEAM_PIPELINE_SCRIPT = TOOLS_DIR / "run_team_pipeline_comparison.py"
 
 
@@ -296,6 +297,44 @@ class ExperimentCliTests(unittest.TestCase):
             self.assertTrue(output_path.exists())
             self.assertGreater(output_path.stat().st_size, 0)
 
+    def test_render_mujoco_rollout_cli_generates_gif(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "mujoco_rollout.gif"
+            cmd = [
+                "python3",
+                str(MUJOCO_VIDEO_SCRIPT),
+                "--policy",
+                "lqr",
+                "--model-profile",
+                "measured_estimate",
+                "--steps",
+                "3",
+                "--fps",
+                "2",
+                "--width",
+                "320",
+                "--height",
+                "180",
+                "--output",
+                str(output_path),
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue(output_path.exists())
+            self.assertGreater(output_path.stat().st_size, 0)
+
+    def test_mujoco_model_loads(self) -> None:
+        cmd = [
+            "python3",
+            "-c",
+            (
+                "import mujoco; "
+                f"mujoco.MjModel.from_xml_path({str(TOOLS_DIR / 'models' / 'wheeltec_balance_vehicle.xml')!r})"
+            ),
+        ]
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
     def test_team_pipeline_comparison_reuses_checkpoints_and_generates_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             out_dir = Path(temp_dir) / "team"
@@ -335,6 +374,12 @@ class ExperimentCliTests(unittest.TestCase):
                 "3",
                 "--fps",
                 "2",
+                "--render-backend",
+                "mujoco",
+                "--render-width",
+                "320",
+                "--render-height",
+                "180",
                 "--seeds",
                 "0",
             ]
@@ -342,7 +387,7 @@ class ExperimentCliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertTrue((out_dir / "summary" / "algorithm_summary.csv").exists())
             self.assertTrue((out_dir / "plots" / "success_rate_bar.png").exists())
-            for file_name in ["lqr_3d.gif", "sac_3d.gif", "td3_3d.gif", "dqn_3d.gif"]:
+            for file_name in ["lqr_3d_mujoco.gif", "sac_3d_mujoco.gif", "td3_3d_mujoco.gif", "dqn_3d_mujoco.gif"]:
                 path = out_dir / "videos" / file_name
                 self.assertTrue(path.exists(), msg=file_name)
                 self.assertGreater(path.stat().st_size, 0, msg=file_name)

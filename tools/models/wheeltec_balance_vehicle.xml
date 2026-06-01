@@ -1,0 +1,56 @@
+<mujoco model="wheeltec_balance_vehicle_visual">
+  <compiler angle="degree" coordinate="local" inertiafromgeom="true"/>
+  <option timestep="0.01" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1="0.12 0.12 0.12" rgb2="0.20 0.20 0.20"/>
+    <material name="floor_mat" texture="grid" texrepeat="8 8" reflectance="0.25"/>
+    <material name="wheel_mat" rgba="0.03 0.17 0.22 1"/>
+    <material name="wheel_side_mat" rgba="0.02 0.08 0.10 1"/>
+    <material name="body_mat" rgba="0.10 0.85 0.88 1"/>
+    <material name="rod_mat" rgba="0.92 0.72 0.38 1"/>
+    <material name="axle_mat" rgba="0.75 0.95 0.98 1"/>
+  </asset>
+
+  <visual>
+    <global azimuth="-45" elevation="-18" offwidth="1280" offheight="720"/>
+    <quality shadowsize="2048"/>
+    <map znear="0.01" zfar="20"/>
+  </visual>
+
+  <worldbody>
+    <light name="key" pos="-0.8 -1.0 2.0" dir="0.7 0.8 -1.2" diffuse="0.9 0.9 0.85"/>
+    <light name="fill" pos="1.2 0.8 1.2" dir="-1 -0.5 -0.8" diffuse="0.25 0.35 0.45"/>
+    <camera name="presentation" pos="0.78 -1.28 0.62" xyaxes="0.86 0.51 0.00 -0.17 0.29 0.94" fovy="38"/>
+    <geom name="floor" type="plane" pos="0 0 0" size="2.0 2.0 0.02" material="floor_mat"/>
+
+    <body name="axle_center" pos="0 0 0.0325">
+      <joint name="slide_x" type="slide" axis="1 0 0" limited="false" damping="0"/>
+      <geom name="axle" type="capsule" fromto="0 -0.118 0 0 0.118 0" size="0.006" material="axle_mat"/>
+
+      <body name="left_wheel" pos="0 0.092 0">
+        <joint name="left_wheel_spin" type="hinge" axis="0 1 0" limited="false" damping="0"/>
+        <geom name="left_wheel_tire" type="cylinder" fromto="0 -0.012 0 0 0.012 0" size="0.0325" material="wheel_mat"/>
+        <geom name="left_wheel_hub" type="cylinder" fromto="0 -0.014 0 0 0.014 0" size="0.014" material="wheel_side_mat"/>
+      </body>
+
+      <body name="right_wheel" pos="0 -0.092 0">
+        <joint name="right_wheel_spin" type="hinge" axis="0 1 0" limited="false" damping="0"/>
+        <geom name="right_wheel_tire" type="cylinder" fromto="0 -0.012 0 0 0.012 0" size="0.0325" material="wheel_mat"/>
+        <geom name="right_wheel_hub" type="cylinder" fromto="0 -0.014 0 0 0.014 0" size="0.014" material="wheel_side_mat"/>
+      </body>
+
+      <body name="body_pitch_frame" pos="0 0 0">
+        <joint name="body_pitch" type="hinge" axis="0 1 0" limited="false" damping="0"/>
+        <geom name="body_box" type="box" pos="0 0 0.0595" size="0.0325 0.066 0.0595" material="body_mat"/>
+        <geom name="body_axis" type="capsule" fromto="0 0 0 0 0 0.119" size="0.008" material="body_mat"/>
+
+        <body name="upper_rod_frame" pos="0 0 0.119">
+          <joint name="upper_pitch" type="hinge" axis="0 1 0" limited="false" damping="0"/>
+          <geom name="upper_rod" type="capsule" fromto="0 0 0 0 0 0.390" size="0.007" material="rod_mat"/>
+          <geom name="upper_tip" type="sphere" pos="0 0 0.390" size="0.016" material="rod_mat"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

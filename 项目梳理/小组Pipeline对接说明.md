@@ -16,10 +16,10 @@ PPT 里提到 MuJoCo/IsaacLab，但当前共享的 `RLPycode.zip` 里没有 MuJo
 因此当前对接方式是：
 
 - 保留我们已经验证过的 Gymnasium 训练与评估环境。
-- 输出 PPT 风格的 3D 可视化 GIF，画面尽量对齐 PPT 里的深色地面、双轮车体和上杆展示方式。
-- 不把该 GIF 称为 MuJoCo/IsaacLab 物理仿真；它是当前 Gym rollout 的 3D 可视化。
+- 默认用 MuJoCo 模型渲染 rollout GIF，画面尽量对齐 PPT 里的深色地面、双轮车体和上杆展示方式。
+- 当前 MuJoCo 层是可视化 backend：策略和状态转移仍来自已验证的 Gymnasium pipeline，再把状态写入 MuJoCo 模型进行渲染。
 
-如果后续组员提供可运行的 MuJoCo XML / IsaacLab 环境，可以把同样的算法 checkpoint 接到那个环境里重新评估和渲染。
+如果后续组员提供可校准的 MuJoCo 动力学 XML / IsaacLab 环境，可以把同样的算法 checkpoint 接到那个环境里重新评估。
 
 ## 一键运行
 
@@ -58,6 +58,15 @@ tools/artifacts/team_pipeline/
     ├── sac_3d.gif
     ├── td3_3d.gif
     └── dqn_3d.gif
+```
+
+默认 MuJoCo 文件名会带 backend 后缀：
+
+```text
+videos/lqr_3d_mujoco.gif
+videos/sac_3d_mujoco.gif
+videos/td3_3d_mujoco.gif
+videos/dqn_3d_mujoco.gif
 ```
 
 ## 快速 smoke 示例
@@ -105,4 +114,4 @@ action = [u_L, u_R]
 1. 加入行为克隆 `BC` baseline，使用真实 CSV 训练 `8 -> 16 -> 16 -> 2` 小网络。
 2. 把 `BC` 和 `PPO+BC` 也接入 `run_team_pipeline_comparison.py`。
 3. 导出小网络权重到 C 数组，对齐 PPT 的 STM32 部署叙事。
-4. 如果有 MuJoCo/IsaacLab 工程，增加 `--render-backend mujoco/isaaclab`，用真实物理引擎重新生成视频。
+4. 继续校准 MuJoCo 动力学，让 MuJoCo 不只是渲染 backend，而是训练和评估 backend。

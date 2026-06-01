@@ -32,6 +32,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seeds", type=int, nargs="*", default=[0])
     parser.add_argument("--render-steps", type=int, default=160)
     parser.add_argument("--fps", type=int, default=20)
+    parser.add_argument("--render-backend", choices=["mujoco", "matplotlib"], default="mujoco")
+    parser.add_argument("--render-width", type=int, default=960)
+    parser.add_argument("--render-height", type=int, default=540)
     parser.add_argument("--skip-train", action="store_true", help="Reuse existing checkpoints in --output-dir.")
     parser.add_argument("--skip-render", action="store_true", help="Only train/evaluate/plot, without GIF rollout rendering.")
     return parser.parse_args()
@@ -96,16 +99,42 @@ def main() -> int:
 
     if not args.skip_render:
         video_dir = args.output_dir / "videos"
+        render_script = tools_dir / ("render_mujoco_rollout.py" if args.render_backend == "mujoco" else "render_rollout_video.py")
+        lqr_render_cmd = [
+            sys.executable,
+            str(render_script),
+            "--policy",
+            "lqr",
+            "--model-profile",
+            args.model_profile,
+            "--steps",
+            str(args.render_steps),
+            "--fps",
+            str(args.fps),
+            "--output",
+            str(video_dir / f"lqr_3d_{args.render_backend}.gif"),
+        ]
+        if args.render_backend == "mujoco":
+            lqr_render_cmd.extend(["--width", str(args.render_width), "--height", str(args.render_height)])
+        else:
+            lqr_render_cmd.extend(["--view", "3d", "--style", "ppt"])
         run_command(
-            [
+            lqr_render_cmd
+        )
+        for algo in TEAM_ALGOS:
+            model_path = args.output_dir / algo / f"seed_{args.seeds[0]}" / "best_model.zip"
+            if not model_path.exists():
+                print(f"Skip render for {algo}: missing {model_path}", file=sys.stderr)
+                continue
+            render_cmd = [
                 sys.executable,
-                str(tools_dir / "render_rollout_video.py"),
+                str(render_script),
                 "--policy",
-                "lqr",
-                "--view",
-                "3d",
-                "--style",
-                "ppt",
+                "rl",
+                "--algo",
+                algo,
+                "--model-path",
+                str(model_path),
                 "--model-profile",
                 args.model_profile,
                 "--steps",
@@ -113,37 +142,14 @@ def main() -> int:
                 "--fps",
                 str(args.fps),
                 "--output",
-                str(video_dir / "lqr_3d.gif"),
+                str(video_dir / f"{algo}_3d_{args.render_backend}.gif"),
             ]
-        )
-        for algo in TEAM_ALGOS:
-            model_path = args.output_dir / algo / f"seed_{args.seeds[0]}" / "best_model.zip"
-            if not model_path.exists():
-                print(f"Skip render for {algo}: missing {model_path}", file=sys.stderr)
-                continue
+            if args.render_backend == "mujoco":
+                render_cmd.extend(["--width", str(args.render_width), "--height", str(args.render_height)])
+            else:
+                render_cmd.extend(["--view", "3d", "--style", "ppt"])
             run_command(
-                [
-                    sys.executable,
-                    str(tools_dir / "render_rollout_video.py"),
-                    "--policy",
-                    "rl",
-                    "--algo",
-                    algo,
-                    "--view",
-                    "3d",
-                    "--style",
-                    "ppt",
-                    "--model-path",
-                    str(model_path),
-                    "--model-profile",
-                    args.model_profile,
-                    "--steps",
-                    str(args.render_steps),
-                    "--fps",
-                    str(args.fps),
-                    "--output",
-                    str(video_dir / f"{algo}_3d.gif"),
-                ]
+                render_cmd
             )
 
     print(f"Team comparison artifacts: {args.output_dir}")

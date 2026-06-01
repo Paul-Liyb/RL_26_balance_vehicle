@@ -9,6 +9,7 @@
 - `tools/evaluate.py`：评估入口
 - `tools/plot_results.py`：结果画图入口
 - `tools/render_rollout_video.py`：把仿真 rollout 渲染成 GIF/MP4
+- `tools/render_mujoco_rollout.py`：用 MuJoCo 模型渲染 rollout 视频
 - `tools/lqr_from_matlab.py`：复现 MATLAB/LQR 模型和增益
 - `tools/tests/`：测试代码
 - `matlab_reference/`：关键 MATLAB 参考脚本
@@ -67,6 +68,7 @@ python tools/fit_real_log_model.py
 
 ```bash
 cd tools
+python render_mujoco_rollout.py --policy lqr --model-profile measured_estimate --steps 300 --fps 20 --output artifacts/videos/lqr_mujoco.gif
 python render_rollout_video.py --policy lqr --view 3d --model-profile measured_estimate --steps 160 --fps 20 --output artifacts/videos/lqr_measured_3d.gif
 python render_rollout_video.py --policy lqr --view 2d --model-profile measured_estimate --steps 160 --fps 20 --output artifacts/videos/lqr_measured_2d.gif
 ```
@@ -94,7 +96,7 @@ python tools/run_full_experiment.py
 小组汇报对比流程（SAC/TD3/DQN + 指标图 + PPT风格3D GIF）：
 
 ```bash
-python tools/run_team_pipeline_comparison.py --model-profile measured_estimate --device cpu --output-dir tools/artifacts/team_pipeline --timesteps 10000 --eval-freq 5000 --eval-episodes 5 --seeds 0
+python tools/run_team_pipeline_comparison.py --model-profile measured_estimate --device cpu --output-dir tools/artifacts/team_pipeline --timesteps 10000 --eval-freq 5000 --eval-episodes 5 --seeds 0 --render-backend mujoco
 ```
 
 ## 当前状态
