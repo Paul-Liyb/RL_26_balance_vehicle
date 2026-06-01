@@ -249,9 +249,17 @@ def render_rollout_2d(frames: list[RolloutFrame], output_path: Path, fps: int, t
     save_animation(animation, output_path, fps, fig)
 
 
-def render_rollout_3d(frames: list[RolloutFrame], output_path: Path, fps: int, title: str) -> None:
+def render_rollout_3d(
+    frames: list[RolloutFrame],
+    output_path: Path,
+    fps: int,
+    title: str,
+    style: str = "ppt",
+) -> None:
     if len(frames) < 2:
         raise ValueError("Need at least two frames to render an animation")
+    if style not in {"ppt", "engineering"}:
+        raise ValueError(f"Unsupported 3D render style: {style}")
 
     poses = [robot_geometry_3d(frame.state) for frame in frames]
     points = np.vstack(
@@ -264,8 +272,11 @@ def render_rollout_3d(frames: list[RolloutFrame], output_path: Path, fps: int, t
     z_max = max(0.65, float(np.max(points[:, 2]) + 0.12))
     y_limit = 0.15
 
+    is_ppt_style = style == "ppt"
     fig = plt.figure(figsize=(8, 6), constrained_layout=True)
+    fig.patch.set_facecolor("#111111" if is_ppt_style else "white")
     ax = fig.add_subplot(111, projection="3d")
+    ax.set_facecolor("#151515" if is_ppt_style else "white")
     ax.set_title(title)
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(-y_limit, y_limit)
@@ -276,22 +287,51 @@ def render_rollout_3d(frames: list[RolloutFrame], output_path: Path, fps: int, t
     ax.set_box_aspect((max(x_max - x_min, 0.3), 2.0 * y_limit, z_max))
     ax.view_init(elev=18, azim=-58)
     ax.grid(True, alpha=0.25)
+    if is_ppt_style:
+        ax.set_axis_off()
+        ax.set_title(title, color="white", pad=8)
+    else:
+        ax.set_title(title)
 
+    if is_ppt_style:
+        floor_x = np.linspace(x_min, x_max, 2)
+        floor_y = np.linspace(-y_limit, y_limit, 2)
+        floor_xx, floor_yy = np.meshgrid(floor_x, floor_y)
+        ax.plot_surface(floor_xx, floor_yy, np.zeros_like(floor_xx), color="#2b2b2b", alpha=0.85, shade=False)
     for y in (-TRACK_WIDTH / 2.0, TRACK_WIDTH / 2.0):
-        ax.plot([x_min, x_max], [y, y], [0.0, 0.0], color="#b7b7b7", linewidth=1.0, alpha=0.7)
-    ax.plot([x_min, x_max], [0.0, 0.0], [0.0, 0.0], color="#777777", linewidth=1.4, alpha=0.8)
+        ax.plot([x_min, x_max], [y, y], [0.0, 0.0], color="#666666" if is_ppt_style else "#b7b7b7", linewidth=1.0, alpha=0.7)
+    ax.plot([x_min, x_max], [0.0, 0.0], [0.0, 0.0], color="#888888" if is_ppt_style else "#777777", linewidth=1.4, alpha=0.8)
 
-    left_wheel, = ax.plot([], [], [], color="#345c72", linewidth=3.0, label="left wheel")
-    right_wheel, = ax.plot([], [], [], color="#4f7f92", linewidth=3.0, label="right wheel")
-    spokes = [ax.plot([], [], [], color="#1f3948", linewidth=1.6)[0] for _ in range(4)]
-    axle_line, = ax.plot([], [], [], color="#222222", linewidth=2.4)
-    body_edges = [ax.plot([], [], [], color="#db7c26", linewidth=2.0)[0] for _ in BOX_EDGE_INDICES]
-    body_axis_line, = ax.plot([], [], [], color="#a84c13", linewidth=4.0, solid_capstyle="round")
-    upper_rod, = ax.plot([], [], [], color="#224b8d", linewidth=3.2, solid_capstyle="round", label="upper rod")
-    tip_dot, = ax.plot([], [], [], "o", color="#224b8d", markersize=5)
-    trail, = ax.plot([], [], [], color="#224b8d", linewidth=1.2, alpha=0.25)
-    action_text = ax.text2D(0.02, 0.96, "", transform=ax.transAxes, fontsize=9, family="monospace", va="top")
-    ax.legend(loc="upper right")
+    wheel_color = "#1b4d5e" if is_ppt_style else "#345c72"
+    wheel_alt_color = "#25677c" if is_ppt_style else "#4f7f92"
+    spoke_color = "#8fd7e8" if is_ppt_style else "#1f3948"
+    axle_color = "#c9eef5" if is_ppt_style else "#222222"
+    body_color = "#35d0d6" if is_ppt_style else "#db7c26"
+    body_axis_color = "#4de7ec" if is_ppt_style else "#a84c13"
+    upper_rod_color = "#d5b37a" if is_ppt_style else "#224b8d"
+    trail_color = "#d5b37a" if is_ppt_style else "#224b8d"
+
+    left_wheel, = ax.plot([], [], [], color=wheel_color, linewidth=3.0, label="left wheel")
+    right_wheel, = ax.plot([], [], [], color=wheel_alt_color, linewidth=3.0, label="right wheel")
+    spokes = [ax.plot([], [], [], color=spoke_color, linewidth=1.6)[0] for _ in range(4)]
+    axle_line, = ax.plot([], [], [], color=axle_color, linewidth=2.4)
+    body_edges = [ax.plot([], [], [], color=body_color, linewidth=2.0)[0] for _ in BOX_EDGE_INDICES]
+    body_axis_line, = ax.plot([], [], [], color=body_axis_color, linewidth=4.0, solid_capstyle="round")
+    upper_rod, = ax.plot([], [], [], color=upper_rod_color, linewidth=3.2, solid_capstyle="round", label="upper rod")
+    tip_dot, = ax.plot([], [], [], "o", color=upper_rod_color, markersize=5)
+    trail, = ax.plot([], [], [], color=trail_color, linewidth=1.2, alpha=0.35 if is_ppt_style else 0.25)
+    action_text = ax.text2D(
+        0.02,
+        0.96,
+        "",
+        transform=ax.transAxes,
+        fontsize=9,
+        family="monospace",
+        va="top",
+        color="white" if is_ppt_style else "black",
+    )
+    if not is_ppt_style:
+        ax.legend(loc="upper right")
 
     def update(frame_idx: int):
         frame = frames[frame_idx]
@@ -340,6 +380,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-path", type=Path, help="SB3 checkpoint for --policy rl.")
     parser.add_argument("--model-profile", choices=SIM_MODEL_PROFILES, default=DEFAULT_MODEL_PROFILE)
     parser.add_argument("--view", choices=["3d", "2d"], default="3d", help="3d shows the double-wheel robot; 2d keeps the old side-view diagnostic.")
+    parser.add_argument("--style", choices=["ppt", "engineering"], default="ppt", help="3D render style.")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--steps", type=int, default=160)
     parser.add_argument("--fps", type=int, default=20)
@@ -364,7 +405,7 @@ def main() -> int:
     )
     title = f"{args.policy.upper()} rollout | view={args.view} | profile={args.model_profile} | seed={args.seed}"
     if args.view == "3d":
-        render_rollout_3d(frames, args.output, fps=args.fps, title=title)
+        render_rollout_3d(frames, args.output, fps=args.fps, title=title, style=args.style)
     else:
         render_rollout_2d(frames, args.output, fps=args.fps, title=title)
     print(f"Rendered {len(frames)} frames to {args.output}")

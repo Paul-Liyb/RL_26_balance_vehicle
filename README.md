@@ -91,6 +91,12 @@ python tools/train.py --algo sac --model-profile real_log_fit --device cpu --out
 python tools/run_full_experiment.py
 ```
 
+小组汇报对比流程（SAC/TD3/DQN + 指标图 + PPT风格3D GIF）：
+
+```bash
+python tools/run_team_pipeline_comparison.py --model-profile measured_estimate --device cpu --output-dir tools/artifacts/team_pipeline --timesteps 10000 --eval-freq 5000 --eval-episodes 5 --seeds 0
+```
+
 ## 当前状态
 
 当前主要任务是站立平衡仿真。已有结论见：

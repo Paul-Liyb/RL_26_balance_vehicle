@@ -11,6 +11,7 @@ TRAIN_SCRIPT = TOOLS_DIR / "train.py"
 EVAL_SCRIPT = TOOLS_DIR / "evaluate.py"
 PLOT_SCRIPT = TOOLS_DIR / "plot_results.py"
 VIDEO_SCRIPT = TOOLS_DIR / "render_rollout_video.py"
+TEAM_PIPELINE_SCRIPT = TOOLS_DIR / "run_team_pipeline_comparison.py"
 
 
 class ExperimentCliTests(unittest.TestCase):
@@ -294,6 +295,57 @@ class ExperimentCliTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertTrue(output_path.exists())
             self.assertGreater(output_path.stat().st_size, 0)
+
+    def test_team_pipeline_comparison_reuses_checkpoints_and_generates_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir) / "team"
+            for algo in ["sac", "td3", "dqn"]:
+                train_cmd = [
+                    "python3",
+                    str(TRAIN_SCRIPT),
+                    "--algo",
+                    algo,
+                    "--timesteps",
+                    "128",
+                    "--seeds",
+                    "0",
+                    "--eval-freq",
+                    "64",
+                    "--eval-episodes",
+                    "2",
+                    "--model-profile",
+                    "measured_estimate",
+                    "--output-dir",
+                    str(out_dir),
+                ]
+                train_result = subprocess.run(train_cmd, check=False, capture_output=True, text=True)
+                self.assertEqual(train_result.returncode, 0, msg=train_result.stderr)
+
+            cmd = [
+                "python3",
+                str(TEAM_PIPELINE_SCRIPT),
+                "--skip-train",
+                "--output-dir",
+                str(out_dir),
+                "--model-profile",
+                "measured_estimate",
+                "--eval-episodes",
+                "2",
+                "--render-steps",
+                "3",
+                "--fps",
+                "2",
+                "--seeds",
+                "0",
+            ]
+            result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertTrue((out_dir / "summary" / "algorithm_summary.csv").exists())
+            self.assertTrue((out_dir / "plots" / "success_rate_bar.png").exists())
+            for file_name in ["lqr_3d.gif", "sac_3d.gif", "td3_3d.gif", "dqn_3d.gif"]:
+                path = out_dir / "videos" / file_name
+                self.assertTrue(path.exists(), msg=file_name)
+                self.assertGreater(path.stat().st_size, 0, msg=file_name)
 
 
 if __name__ == "__main__":
